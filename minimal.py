@@ -6,7 +6,7 @@ def run_command(command: str) -> None:
     print('Running:', command)
     command = shlex.split(command)
     return
-    print(subprocess.check_output(command))
+    print(subprocess.check_output(command, encoding='utf-8'))
 
 def disable_service(name):
     run_command('systemctl disable ' + name)
@@ -28,6 +28,8 @@ def ask(question: str) -> bool:
     return False
 
 if __name__ == '__main__':
+    run_command('free -h')
+    run_command('df -h')
     if ask('Disable coredump to save disk space?'):
         append_to_file(
             '/etc/systemd/coredump.conf.d/coredump.conf',
@@ -52,19 +54,16 @@ if __name__ == '__main__':
             'net.ipv4.tcp_low_latency = 1',
             'vm.dirty_background_ratio = 2',
         )
-    if ask('Want faster bootup?'):
-        disable_service('NetworkManager-wait-online.service')
 
-    if ask('Remove abrt, anaconda, avahi, dnf-makecache, firewalld, fprintd, geoclue, ibus-typing-booster, pcsc-lite?'):
+    if ask('Remove abrt, anaconda, avahi, dnf-makecache, geoclue, ibus-typing-booster, qt5-qtbase, quota, rygel, yum?'):
         disable_service('dnf-makecache.timer')
-        disable_service('firewalld')
-        run_command('dnf remove -y abrt anaconda avahi fprintd geoclue ibus-typing-booster pcsc-lite')
+        run_command('dnf remove -y abrt anaconda anaconda-core avahi geoclue ibus-typing-booster qt5-qtbase quota rygel yum')
 
-    if ask('Remove openvpn?'):
-        run_command('dnf remove -y openvpn')
+    if ask('Remove firewalld, fprintd, openvpn, pcsc-lite?'):
+        run_command('dnf remove -y firewalld fprintd openvpn pcsc-lite')
 
-    if ask('Disable flatpak, PackageKit, podman?'):
-        run_command('dnf remove -y flatpak PackageKit podman')
+    if ask('Disable flatpak, fuse, hyperv, PackageKit, podman?'):
+        run_command('dnf remove -y flatpak fuse hyperv-daemons PackageKit podman')
 
     if ask('Is the system without a printer or a scanner?'):
         run_command('dnf remove -y cups simple-scan')
@@ -75,11 +74,11 @@ if __name__ == '__main__':
 
     if ask('Is RAID unused?'):
         disable_service('mdmonitor.service')
-        disable_service('raid-check.service')
         run_command('dnf remove -y dmraid')
 
     if ask('Is remote login (sssd) unused?'):
         run_command('dnf remove -y sssd sssd-kcm')
+        disable_service('NetworkManager-wait-online.service')
 
     if ask('Is the system without nVidia graphics?'):
         disable_service('switcheroo-control.service')
@@ -93,7 +92,7 @@ if __name__ == '__main__':
 
     if ask('Disable SELinux, hardened usercopy, watchdog for better performance?'):
         disable_service('selinux-autorelabel-mark.service')
-        run_command('dnf remove -y audit')
+        run_command('dnf remove -y audit selinux-policy')
         run_command('grubby --update-kernel=ALL --args="selinux=0 audit=0 hardened_usercopy=off nowatchdog"')
 
     if ask('Remove unnecessary GNOME apps?'):
@@ -134,8 +133,11 @@ if __name__ == '__main__':
         run_command('dnf remove -y gnome-terminal')
 
     if ask('Do final clean up?'):
-        run_command('rm -r /var/cache/PackageKit')
-        run_command('sudo rm -r /var/lib/systemd/coredump')
-        run_command('sudo dnf clean all')
-        run_command('sudo journalctl --rotate')
-        run_command('sudo journalctl --vacuum-files=1')
+        try:
+            run_command('rm -r /var/cache/PackageKit')
+            run_command('rm -r /var/lib/systemd/coredump')
+        except:
+            print('Failed')
+        run_command('dnf clean all')
+        run_command('journalctl --rotate')
+        run_command('journalctl --vacuum-files=1')
