@@ -13,12 +13,13 @@ def disable_service(name):
 
 def append_to_file(path: str, *content: list[str]) -> None:
     print(f'Writing to file {path}:')
-    print('\n'.join(content))
+    content = '\n'.join(content)
+    print(content)
     return
     path = pathlib.Path(path)
     path.parent.mkdir(exist_ok=True)
     with open(path, 'a') as f:
-        f.writelines(content)
+        f.write(content)
 
 def ask(question: str) -> bool:
     print()
@@ -30,6 +31,7 @@ def ask(question: str) -> bool:
 if __name__ == '__main__':
     run_command('free -h')
     run_command('df -h')
+    ask('Remember to off unneeded searches. (no action)')
     if ask('Disable coredump to save disk space?'):
         append_to_file(
             '/etc/systemd/coredump.conf.d/coredump.conf',
@@ -62,14 +64,13 @@ if __name__ == '__main__':
     if ask('Remove firewalld, fprintd, openvpn, pcsc-lite?'):
         run_command('dnf remove -y firewalld fprintd openvpn pcsc-lite')
 
-    if ask('Disable flatpak, fuse, hyperv, PackageKit, podman?'):
-        run_command('dnf remove -y flatpak fuse hyperv-daemons PackageKit podman')
+    if ask('Disable flatpak, fuse, hyperv, PackageKit, podman, ostree?'):
+        run_command('dnf remove -y flatpak fuse hyperv-daemons PackageKit PackageKit-glib podman ostree')
 
     if ask('Is the system without a printer or a scanner?'):
-        run_command('dnf remove -y cups simple-scan')
+        run_command('dnf remove -y cups simple-scan sane-backends-drivers-scanners')
 
     if ask('Is LVM unused?'):
-        # disable_service('lvm2-monitor.service')
         run_command('dnf remove -y lvm2')
 
     if ask('Is RAID unused?'):
@@ -89,6 +90,9 @@ if __name__ == '__main__':
 
     if ask('Is the system without a modem?'):
         disable_service('ModemManager.service')
+
+    if ask('Is the system without Intel wireless?'):
+        run_command('dnf remove -y iwl*-firmware')
 
     if ask('Disable SELinux, hardened usercopy, watchdog for better performance?'):
         disable_service('selinux-autorelabel-mark.service')
